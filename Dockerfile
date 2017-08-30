@@ -5,9 +5,8 @@ MAINTAINER Tomochika Hara <dockerhub@thara.jp>
 # system update
 RUN yum -y update && yum clean all
 
-RUN grep -i -E "^mirror|^baseurl" /etc/yum.repos.d/CentOS-Base.repo
-RUN yum groupinstall -y "Development Tools"
-RUN yum install -y curl curl-devel coreutils gcc gcc-c++ gettext openssl-devel perl wget zlib-devel bzip2-devel
+RUN yum groupinstall -y "Development Tools" ; yum clean all
+RUN yum install -y curl curl-devel coreutils gcc gcc-c++ gettext openssl-devel perl wget zlib-devel bzip2-devel ; yum clean all
 
 RUN mkdir -p /usr/src/gcc \
   && cd /usr/src/gcc \
