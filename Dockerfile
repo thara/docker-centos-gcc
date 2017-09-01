@@ -2,37 +2,55 @@ FROM centos:7.2.1511
 
 MAINTAINER Tomochika Hara <dockerhub@thara.jp>
 
-# system update
-RUN yum -y update && yum clean all
+ENV GCC_VERSION 7.1.0
+ENV GMP_VERSION 6.1.2
+ENV MPFR_VERSION 3.1.5
+ENV MPC_VERSION 1.0.3
 
-RUN yum groupinstall -y "Development Tools" ; yum clean all
-RUN yum install -y curl curl-devel coreutils gcc gcc-c++ gettext openssl-devel perl zlib-devel bzip2-devel ; yum clean all
+RUN yum -y update; yum clean all
+RUN yum install -y make libmpc-devel mpfr-devel gmp-devel gcc gcc-c++ m4 bzip2; yum clean all
 
-RUN mkdir -p /usr/src/gcc \
-  && cd /usr/src/gcc \
-  && curl -O http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-7.1.0/gcc-7.1.0.tar.bz2 \
-  && tar xfj gcc-7.1.0.tar.bz2
+RUN curl -fSL "https://ftp.gnu.org/gnu/gnu-keyring.gpg" -o /etc/gnu-keyring.gpg \
+  && gpg -q --import /etc/gnu-keyring.gpg
 
 RUN mkdir -p /usr/src/gmp \
+  && curl -fSL "https://ftp.gnu.org/gnu/gmp/gmp-$GMP_VERSION.tar.xz" -o gmp.tar.xz \
+  && curl -fSL "https://ftp.gnu.org/gnu/gmp/gmp-$GMP_VERSION.tar.xz.sig" -o gmp.tar.xz.sig \
+  && gpg --batch --verify gmp.tar.xz.sig gmp.tar.xz \
+  && tar xf gmp.tar.xz -C /usr/src/gmp --strip-components=1 \
   && cd /usr/src/gmp \
-  && curl -O ftp://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.xz \
-  && tar xf gmp-6.1.2.tar.xz \
-  && mv gmp-6.1.2 /usr/src/gcc/gcc-7.1.0/gmp
+  && rm -f gmp.tar.xz* \
+  && ./configure && make -j$(nproc) && make check && make install
 
 RUN mkdir -p /usr/src/mpfr \
+  && curl -fSL "https://ftp.gnu.org/gnu/mpfr/mpfr-$MPFR_VERSION.tar.xz" -o mpfr.tar.xz \
+  && curl -fSL "https://ftp.gnu.org/gnu/mpfr/mpfr-$MPFR_VERSION.tar.xz.sig" -o mpfr.tar.xz.sig \
+  && gpg --batch --verify mpfr.tar.xz.sig mpfr.tar.xz \
+  && tar xf mpfr.tar.xz -C /usr/src/mpfr --strip-components=1 \
   && cd /usr/src/mpfr \
-  && curl -O https://ftp.gnu.org/gnu/mpfr/mpfr-3.1.5.tar.xz \
-  && tar xf mpfr-3.1.5.tar.xz \
-  && mv mpfr-3.1.5 /usr/src/gcc/gcc-7.1.0/mpfr
+  && rm -f mpfr.tar.xz* \
+  && ./configure && make -j$(nproc) && make check && make install
 
 RUN mkdir -p /usr/src/mpc \
+  && curl -fSL "https://ftp.gnu.org/gnu/mpc/mpc-$MPC_VERSION.tar.gz" -o mpc.tar.xz \
+  && curl -fSL "https://ftp.gnu.org/gnu/mpc/mpc-$MPC_VERSION.tar.gz.sig" -o mpc.tar.xz.sig \
+  && gpg --batch --verify mpc.tar.xz.sig mpc.tar.xz \
+  && tar xf mpc.tar.xz -C /usr/src/mpc --strip-components=1 \
   && cd /usr/src/mpc \
-  && curl -O ftp://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz \
-  && tar xf mpc-1.0.3.tar.gz \
-  && mv mpc-1.0.3 /usr/src/gcc/gcc-7.1.0/mpc
+  && rm -f mpc.tar.xz* \
+  && ./configure && make -j$(nproc) && make check && make install
 
-RUN cd /usr/src/gcc/gcc-7.1.0 \
+
+RUN mkdir -p /usr/src/gcc \
+  && curl -fSL "http://ftpmirror.gnu.org/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.bz2" -o gcc.tar.bz2 \
+  && curl -fSL "http://ftpmirror.gnu.org/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.bz2.sig" -o gcc.tar.bz2.sig \
+  && gpg --batch --verify gcc.tar.bz2.sig gcc.tar.bz2 \
+  && tar xfj gcc.tar.bz2 -C /usr/src/gcc --strip-components=1 \
+  && cd /usr/src/gcc \
   && ./configure --disable-bootstrap --disable-multilib -enable-languages=c,c++ \
-  && make -j 2 \
+  && make -j$(nproc) \
   && make install
 
+
+RUN echo "/usr/local/lib64" >> /etc/ld.so.conf.d/lib64.conf \
+  && ldconfig -v
